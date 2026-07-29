@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>고객사별 서비스 현황 대시보드</title>
+<title>앳홈 서비스 현황 대시보드</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -119,15 +119,15 @@
 <div class="wrap">
 
   <header>
-    <h1>고객사별 서비스 현황 대시보드 <span class="badge-sample" id="dataBadge">샘플 데이터</span></h1>
+    <h1>앳홈 서비스 현황 대시보드 <span class="badge-sample" id="dataBadge">샘플 데이터</span></h1>
     <p>고객사 · 제품 · 모델별 접수 / 회수 / 처리 현황</p>
   </header>
 
   <div class="panel" style="margin-bottom:24px;">
     <h2>JSON 데이터 업로드</h2>
     <p style="color:var(--text-dim); font-size:12.5px; margin-bottom:14px;">
-      아래 형식의 JSON 파일을 업로드하세요 (하루 1회 갱신 기준) — 각 객체는 고객사, 제품, 모델, 당일접수, 누적접수, 회수진행, 처리중, 처리완료 키를 포함해야 합니다.<br>
-      예시: <code style="color:var(--blue);">[{"고객사":"앳홈","제품":"공기청정기","모델":"AH-AP200","당일접수":6,"누적접수":142,"회수진행":9,"처리중":14,"처리완료":119}, ...]</code>
+      아래 형식의 JSON 파일을 업로드하세요 (하루 1회 갱신 기준) — 각 객체는 고객사, 제품, 모델, 당일접수, 누적접수, 회수진행, 처리중, 처리완료, 부품교체, 단순설명, 취소, 무상수리, 유상수리 키를 포함해야 합니다.<br>
+      예시: <code style="color:var(--blue);">[{"고객사":"앳홈","제품":"공기청정기","모델":"AH-AP200","당일접수":6,"누적접수":142,"회수진행":9,"처리중":14,"처리완료":119,"부품교체":58,"단순설명":31,"취소":8,"무상수리":34,"유상수리":11}, ...]</code>
     </p>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <label class="chip" for="jsonInput" style="cursor:pointer; border-color:var(--blue); color:var(--blue);">
@@ -177,6 +177,24 @@
     </div>
   </div>
 
+  <div style="margin:36px 0 16px; padding-top:24px; border-top:1px solid var(--border);">
+    <h1 style="font-size:18px; font-weight:700; letter-spacing:-0.3px;">서비스 유형별 현황</h1>
+    <p style="color:var(--text-dim); font-size:12.5px; margin-top:4px;">부품교체 · 단순설명 · 취소 · 무상수리 · 유상수리 건수 — 접수/처리 현황과 별도 통계</p>
+  </div>
+
+  <div class="summary-grid" id="serviceTypeSummaryGrid" style="margin-bottom:24px;"></div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <h2>고객사별 서비스 유형 현황</h2>
+      <div class="chart-box"><canvas id="serviceTypeClientChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h2>전체 서비스 유형 비율</h2>
+      <div class="chart-box"><canvas id="serviceTypeStatusChart"></canvas></div>
+    </div>
+  </div>
+
   <footer>샘플 데이터 기준 · 실제 엑셀 데이터 연동 시 자동 갱신 예정</footer>
 </div>
 
@@ -185,16 +203,16 @@
 const COLOR_HEX = { blue:'#4f8ef7', green:'#34c97b', purple:'#a07cf5', orange:'#f5a623', red:'#e8445a' };
 
 const sampleData = [
-  {client:'앳홈', product:'공기청정기', model:'AH-AP200', today:6, total:142, retrieve:9, processing:14, done:119},
-  {client:'앳홈', product:'정수기', model:'AH-WP450', today:4, total:98, retrieve:5, processing:11, done:82},
-  {client:'앳홈', product:'제습기', model:'AH-DH100', today:2, total:41, retrieve:2, processing:5, done:34},
-  {client:'현대렌탈케어', product:'매트리스', model:'HRC-MT10', today:8, total:210, retrieve:12, processing:22, done:176},
-  {client:'현대렌탈케어', product:'비데', model:'HRC-BD30', today:5, total:133, retrieve:6, processing:15, done:112},
-  {client:'현대렌탈케어', product:'안마의자', model:'HRC-MC77', today:3, total:64, retrieve:4, processing:9, done:51},
-  {client:'드롱기켄우드코리아', product:'커피머신', model:'DK-EC685', today:7, total:176, retrieve:10, processing:18, done:148},
-  {client:'드롱기켄우드코리아', product:'토스터', model:'DK-CTO4003', today:3, total:59, retrieve:3, processing:7, done:49},
-  {client:'쿠쿠', product:'전기밥솥', model:'CK-CRP310', today:9, total:201, retrieve:11, processing:19, done:171},
-  {client:'쿠쿠', product:'정수기', model:'CK-WP520', today:4, total:87, retrieve:5, processing:10, done:72},
+  {client:'앳홈', product:'공기청정기', model:'AH-AP200', today:6, total:142, retrieve:9, processing:14, done:119, partReplace:58, simpleExplain:31, cancel:8, freeRepair:34, paidRepair:11},
+  {client:'앳홈', product:'정수기', model:'AH-WP450', today:4, total:98, retrieve:5, processing:11, done:82, partReplace:40, simpleExplain:22, cancel:5, freeRepair:24, paidRepair:7},
+  {client:'앳홈', product:'제습기', model:'AH-DH100', today:2, total:41, retrieve:2, processing:5, done:34, partReplace:16, simpleExplain:10, cancel:2, freeRepair:10, paidRepair:3},
+  {client:'현대렌탈케어', product:'매트리스', model:'HRC-MT10', today:8, total:210, retrieve:12, processing:22, done:176, partReplace:86, simpleExplain:45, cancel:11, freeRepair:50, paidRepair:18},
+  {client:'현대렌탈케어', product:'비데', model:'HRC-BD30', today:5, total:133, retrieve:6, processing:15, done:112, partReplace:55, simpleExplain:28, cancel:7, freeRepair:32, paidRepair:11},
+  {client:'현대렌탈케어', product:'안마의자', model:'HRC-MC77', today:3, total:64, retrieve:4, processing:9, done:51, partReplace:26, simpleExplain:14, cancel:3, freeRepair:15, paidRepair:6},
+  {client:'드롱기켄우드코리아', product:'커피머신', model:'DK-EC685', today:7, total:176, retrieve:10, processing:18, done:148, partReplace:72, simpleExplain:38, cancel:9, freeRepair:42, paidRepair:15},
+  {client:'드롱기켄우드코리아', product:'토스터', model:'DK-CTO4003', today:3, total:59, retrieve:3, processing:7, done:49, partReplace:24, simpleExplain:13, cancel:3, freeRepair:14, paidRepair:5},
+  {client:'쿠쿠', product:'전기밥솥', model:'CK-CRP310', today:9, total:201, retrieve:11, processing:19, done:171, partReplace:82, simpleExplain:44, cancel:10, freeRepair:48, paidRepair:17},
+  {client:'쿠쿠', product:'정수기', model:'CK-WP520', today:4, total:87, retrieve:5, processing:10, done:72, partReplace:35, simpleExplain:19, cancel:4, freeRepair:21, paidRepair:8},
 ];
 
 let rawData = sampleData.map(d => ({...d}));
@@ -232,7 +250,15 @@ function buildFilterChips(){
   });
 }
 
-let clientChart, statusChart;
+let clientChart, statusChart, serviceTypeClientChart, serviceTypeStatusChart;
+
+const SERVICE_TYPES = [
+  {key:'partReplace', label:'부품교체', color:'blue'},
+  {key:'simpleExplain', label:'단순설명', color:'purple'},
+  {key:'cancel', label:'취소', color:'red'},
+  {key:'freeRepair', label:'무상수리', color:'green'},
+  {key:'paidRepair', label:'유상수리', color:'orange'},
+];
 
 function getFiltered(){
   return activeClient === '전체' ? rawData : rawData.filter(d => d.client === activeClient);
@@ -286,6 +312,7 @@ function render(){
   `;
 
   renderCharts(data);
+  renderServiceTypeStats(data);
 }
 
 function renderCharts(data){
@@ -346,8 +373,68 @@ function renderCharts(data){
   });
 }
 
-// ---------------- JSON 업로드 ----------------
-const REQUIRED_KEYS = ['고객사','제품','모델','당일접수','누적접수','회수진행','처리중','처리완료'];
+function renderServiceTypeStats(data){
+  // 요약 카드
+  const sums = {};
+  SERVICE_TYPES.forEach(t => { sums[t.key] = data.reduce((a,b) => a + (b[t.key]||0), 0); });
+
+  document.getElementById('serviceTypeSummaryGrid').innerHTML = SERVICE_TYPES.map(t => `
+    <div class="stat-card c-${t.color}">
+      <div class="stat-label">${t.label}</div>
+      <div class="stat-value">${sums[t.key].toLocaleString()}</div>
+      <div class="stat-sub">전체 건수</div>
+    </div>
+  `).join('');
+
+  // 고객사별 서비스 유형 막대그래프
+  const byClient = {};
+  data.forEach(d => {
+    if(!byClient[d.client]) byClient[d.client] = {partReplace:0, simpleExplain:0, cancel:0, freeRepair:0, paidRepair:0};
+    SERVICE_TYPES.forEach(t => { byClient[d.client][t.key] += (d[t.key]||0); });
+  });
+  const clientLabels = Object.keys(byClient);
+
+  if(serviceTypeClientChart) serviceTypeClientChart.destroy();
+  serviceTypeClientChart = new Chart(document.getElementById('serviceTypeClientChart'), {
+    type:'bar',
+    data:{
+      labels: clientLabels,
+      datasets: SERVICE_TYPES.map(t => ({
+        label: t.label,
+        data: clientLabels.map(c => byClient[c][t.key]),
+        backgroundColor: COLOR_HEX[t.color],
+        borderRadius:4
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      scales:{
+        x:{grid:{display:false}, ticks:{color:'#8b90a3', font:{size:11}}},
+        y:{grid:{color:'#2a2e3d'}, ticks:{color:'#8b90a3', font:{size:11}}}
+      },
+      plugins:{ legend:{labels:{color:'#e8eaf0', font:{size:11}}} }
+    }
+  });
+
+  // 전체 서비스 유형 비율 도넛
+  if(serviceTypeStatusChart) serviceTypeStatusChart.destroy();
+  serviceTypeStatusChart = new Chart(document.getElementById('serviceTypeStatusChart'), {
+    type:'doughnut',
+    data:{
+      labels: SERVICE_TYPES.map(t => t.label),
+      datasets:[{
+        data: SERVICE_TYPES.map(t => sums[t.key]),
+        backgroundColor: SERVICE_TYPES.map(t => COLOR_HEX[t.color]),
+        borderColor:'#1a1d27', borderWidth:3
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{position:'bottom', labels:{color:'#e8eaf0', font:{size:11}, padding:14}} }
+    }
+  });
+}
+const REQUIRED_KEYS = ['고객사','제품','모델','당일접수','누적접수','회수진행','처리중','처리완료','부품교체','단순설명','취소','무상수리','유상수리'];
 const dataBadge = document.getElementById('dataBadge');
 const fileStatus = document.getElementById('fileStatus');
 const errorBox = document.getElementById('uploadError');
@@ -406,6 +493,11 @@ document.getElementById('jsonInput').addEventListener('change', function(e){
           retrieve: Number(row['회수진행']) || 0,
           processing: Number(row['처리중']) || 0,
           done: Number(row['처리완료']) || 0,
+          partReplace: Number(row['부품교체']) || 0,
+          simpleExplain: Number(row['단순설명']) || 0,
+          cancel: Number(row['취소']) || 0,
+          freeRepair: Number(row['무상수리']) || 0,
+          paidRepair: Number(row['유상수리']) || 0,
         }));
 
       if(parsed.length === 0){
